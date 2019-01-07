@@ -100,6 +100,13 @@ static inline kkbool_t kklex_is_number_char(kkuint16_t ch) {
     return KK_FALSE;
 }
 
+static inline kkbool_t kklex_is_octal_char(kkuint16_t ch) {
+  if ('0' <= ch && ch <= '7')
+    return KK_TRUE;
+  else
+    return KK_FALSE;
+}
+
 static kkbool_t kklex_is_id_char(kkuint16_t ch) {
   if (('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z') || ch == '$' || ch == '_')
     return KK_TRUE;
@@ -107,33 +114,77 @@ static kkbool_t kklex_is_id_char(kkuint16_t ch) {
     return KK_FALSE;
 }
 
+static kkf64_t kklex_match_decimal(kkctx_t *c, kklex_t *lex) {
+  kkf64_t f = 0, t = 0.1;
+  while (kklex_is_number_char(kklex_read(c, lex))) {
+    f += (kklex_get(c, lex) - '0') * t;
+    t /= 10;
+  }
+  return f;
+}
+
+static kkuint64_t kklex_match_integer(kkctx_t *c, kklex_t *lex) {}
+
+static inline kkbool_t kklex_match(kkctx_t *c, kklex_t *lex, kkuint16_t ch) {
+  if (kklex_read(c, lex) == ch) {
+    kklex_get(c, lex);
+    return KK_TRUE;
+  } else
+    return KK_FALSE;
+}
+
+#define kk_match(ch) kklex_match(c, lex, ch)
+#define kk_get() kklex_get(c, lex)
+#define kk_read() kklex_read(c, lex)
+
 uint8_t kklexi_next(kkctx_t *c, kklex_t *lex) {
   if (c->jbuf == 0) return 0;
   lex->line_terminator = 0;
 check:
-  kkuint16_t ch = kklex_get(c, lex);
-
   // end of line
-  if (kklex_is_line_terminator(ch)) {
+  if (kklex_is_line_terminator(kk_read())) {
+    kk_get();
     lex->line_terminator = 1;
     goto check;
   }
 
   // white space
-  if (kklex_is_white_space(ch)) goto check;
+  if (kklex_is_white_space(kk_read())) {
+    kk_get();
+    goto check;
+  }
 
-  if (ch == '0') {
-    ch = kklex_get(c, lex);
-    // match octal or decimal
-    if (kklex_is_number_char(ch)){
-      
+  // match number
+  if (kklex_is_number_char(kk_read())) {
+    if (kk_match('0')) {
+      // match octal or decimal
+      if (kklex_is_number_char(kk_read())) {  // '0'[0-9]
+        while (1) {
+          if (kk_match('.')) {
+          }
+        }
+      }
+      // match hex
+      if (kk_match('x') || kk_match('X')) {  // 0x***
+      }
+      // match binary
+      if (kk_match('b') || kk_match('B')) {  // 0b***
+      }
     }
-    // match hex
-    if (ch == 'x' || ch == 'X') {
-      kklex_get(c, lex);
-    }
-    // match binary
-    if (ch == 'b') {
+    kkuint64_t inum = kklex_match_integer(c, lex);
+    kkf64_t fnum = 0;
+    if (kk_match('.')) fnum = kklex_match_decimal(c, lex);
+    // match exponent
+    if (kk_match('e') || kk_match('E')) {  // 0e
+      if (kk_match('-')) {                 // xxxe-***
+        kkuint64_t p = kklex_match_integer(c, lex);
+      } else {
+        kk_match('+');
+      }
     }
   }
 }
+
+#undef kk_match
+#undef kk_get
+#undef kk_read
