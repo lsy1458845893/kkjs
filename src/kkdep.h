@@ -19,8 +19,8 @@ typedef double kkf64_t;
 #include <setjmp.h>
 
 typedef jmp_buf kkjbuf_t;
-#define kk_setjmp setjmp;
-#define kk_longjmp longjmp;
+#define kk_setjmp setjmp
+#define kk_longjmp longjmp
 
 #include <string.h>
 #define kk_strlen strlen

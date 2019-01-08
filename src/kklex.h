@@ -41,6 +41,7 @@ static inline void kklex_init(kklex_t *lex, void *udat, kklex_read_t read, kklex
 }
 void kklex_destory(kkctx_t *c, kklex_t *lex);
 
+const kkuint8_t *kklex_word_cstr(kkuint8_t tok);
 uint8_t kklexi_next(kkctx_t *c,kklex_t *lex);
 
 #endif

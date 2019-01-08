@@ -145,6 +145,57 @@ static inline kkbool_t kklexi_range_push(kkctx_t *c, kklex_t *lex, kkuint16_t a,
   return ret;
 }
 
+#include "kktok.h"
+static const kkuint8_t *kklex_wordstr_tab[] = {
+#define KKLEX_WORD_STR(name, str) str,
+#define KKLEX_GROUP(n, ch) n(KKLEX_WORD_STR)
+    KKTOK_WORD_GROUPS(KKLEX_GROUP)
+#undef KKLEX_GROUP
+#undef KKLEX_WORD_STR
+};
+
+const kkuint8_t *kklex_word_cstr(kkuint8_t tok) {
+  enum {
+#define KKLEX_WORD_INDEX(name, str) KKLEX_TOK_##name##_INDEX,
+#define KKLEX_GROUP(n, ch) n(KKLEX_WORD_INDEX)
+    KKTOK_WORD_GROUPS(KKLEX_GROUP)
+#undef KKLEX_GROUP
+#undef KKLEX_WORD_INDEX
+  };
+  switch (tok) {
+#define KKLEX_WORD_INDEX(name, str) \
+  case KKTOK_##name:                \
+    return kklex_wordstr_tab[KKLEX_TOK_##name##_INDEX];
+#define KKLEX_GROUP(n, ch) n(KKLEX_WORD_INDEX)
+    KKTOK_WORD_GROUPS(KKLEX_GROUP)
+#undef KKLEX_GROUP
+#undef KKLEX_WORD_INDEX
+    default:
+      return 0;
+  }
+}
+
+static kkbool_t kklex_compare_string(kklex_t *lex, const kkuint8_t *str) {
+  kkuint8_t i = 0;
+  for (i = 0; str[i]; i++)
+    if (str[i] != lex->buf[i]) return KK_FALSE;
+  if (i != lex->buf_top) return KK_FALSE;
+  return KK_TRUE;
+}
+
+static kkuint8_t kklex_match_keyword(kklex_t *lex) {
+  switch (lex->buf[0]) {
+#define KKLEX_WORD_INDEX(name, str) \
+  if (kklex_compare_string(lex, kklex_word_cstr(KKTOK_##name))) return KKTOK_##name;
+#define KKLEX_GROUP(n, ch) \
+  case ch:                 \
+    n(KKLEX_WORD_INDEX) return 0;
+    KKTOK_WORD_GROUPS(KKLEX_GROUP)
+#undef KKLEX_GROUP
+#undef KKLEX_WORD_INDEX
+  }
+}
+
 static inline void kklex_clean_lasttype(kkctx_t *c, kklex_t *lex) {
   switch (lex->tok_type) {
     case KKTOK_ID:
@@ -170,6 +221,7 @@ void kklex_destory(kkctx_t *c, kklex_t *lex) {
 #define kk_range kklex_range
 #define kk_range_test(a, b) kklex_range_test(c, lex, a, b)
 #define kk_range_push(a, b) kklexi_range_push(c, lex, a, b)
+#define kk_ret(t) return lex->tok_type = t
 
 static kkf64_t kklexi_get_exponent(kkctx_t *c, kklex_t *lex) {
   kkf64_t fnum = 1;
@@ -195,9 +247,6 @@ static kkf64_t kklex_get_decimal(kkctx_t *c, kklex_t *lex) {
   return f;
 }
 
-
-
-#include "kktok.h"
 uint8_t kklexi_next(kkctx_t *c, kklex_t *lex) {
   if (!c->jbuf) return 0;
   kklex_clean_lasttype(c, lex);
@@ -212,17 +261,13 @@ check:
     goto check;
   } else if (kk_range_test('a', 'z') || kk_range_test('A', 'Z') || kk_test('_') || kk_test('$')) {
     // match id
-    while (1) {
-      if (kk_range_test('a', 'z') ||
-          kk_range_test('A', 'Z') ||
-          kk_range_test('0', '9') ||
-          kk_test('_') || kk_test('$')) {
-        kklexi_push(c, lex, kk_get());
-        continue;
-      } else {
-        //!!! end match id convert word or id !!!
-      }
-    }
+    while (kk_range_test('a', 'z') ||
+           kk_range_test('A', 'Z') ||
+           kk_range_test('0', '9') ||
+           kk_test('_') || kk_test('$'))
+      kklexi_push(c, lex, kk_get());
+    if (lex->tok_type = kklex_match_keyword(lex)) return lex->tok_type;
+    //!!! return id str !!!
   } else if (kk_range_test('0', '9')) {
     if (kk_match('0')) {
       if (kk_match('x') || kk_match('X')) {
@@ -296,9 +341,120 @@ check:
     } else {
     }
   }
-  //!!! wait to write !!!
+  switch (kk_get()) {
+    case '~':
+      kk_ret(KKTOK_BIT_NOT);  //  ~
+    case '}':
+      kk_ret(KKTOK_BRACE_R);  //  }
+    case '|':
+      if (kk_match('|')) kk_ret(KKTOK_LOGIC_OR);  //  ||
+      if (kk_match('=')) kk_ret(KKTOK_BOR_EQ);    //  |=
+      kk_ret(KKTOK_BIT_OR);                       //  |
+    case '{':
+      kk_ret(KKTOK_BRACE_L);  //  {
+    case '^':
+      if (kk_match('=')) kk_ret(KKTOK_BXOR_EQ);  //  ^=
+      kk_ret(KKTOK_BIT_XOR);                     //  ^
+    case ']':
+      kk_ret(KKTOK_BRACKET_R);  //  ]
+    case '[':
+      kk_ret(KKTOK_BRACKET_L);  //  [
+    case '?':
+      kk_ret(KKTOK_QUESTION);  //  ?
+    case '>':
+      if (kk_match('>')) {
+        if (kk_match('>')) {
+          if (kk_match('=')) kk_ret(KKTOK_SHR_EQ);  //  >>>=
+          kk_ret(KKTOK_SHR);                        //  >>>
+        }
+        if (kk_match('=')) kk_ret(KKTOK_SAR_EQ);  //  >>=
+        kk_ret(KKTOK_SAR);                        //  >>
+      }
+      if (kk_match('=')) kk_ret(KKTOK_GE);  //  >=
+      kk_ret(KKTOK_GT);                     //  >
+    case '=':
+      if (kk_match('>')) kk_ret(KKTOK_ARROW);  //  =>
+      if (kk_match('=')) {
+        if (kk_match('=')) kk_ret(KKTOK_EQ_STRICT);  //  ===
+        kk_ret(KKTOK_EQ);                            //  ==
+      }
+      kk_ret(KKTOK_ASSIGN);  // =
+    case '<':
+      if (kk_match('=')) kk_ret(KKTOK_LE);  //  <=
+      if (kk_match('<')) {
+        if (kk_match('=')) kk_ret(KKTOK_SHL_EQ);  //  <<=
+        kk_ret(KKTOK_SHL);                        //  <<
+      }
+      kk_ret(KKTOK_LT);  //  <
+    case ';':
+      kk_ret(KKTOK_SEM);  //  ;
+    case ':':
+      kk_ret(KKTOK_COLON);  //  :
+    case '/':
+      if (kk_match('=')) kk_ret(KKTOK_DIV_EQ);  //  /=
+      if (kk_match('/')) {                      // "//"
+        while (kk_read() != 0 && (!kklex_is_line_terminator(kk_read())))
+          kk_get();
+        goto check;
+      }
+      if (kk_match('*')) {  // "/*"
+        while (1) {
+          if (kk_match(0)) kklex_throw(KKERR_SYNTAX_ERROR__INVAILD_OR_UNEXPECTED_TOKEN);
+          if (kk_match('*') && kk_match('/')) goto check;
+          kk_get();
+        }
+      }
+      kk_ret(KKTOK_DIV);  //  /
+    case '.':
+      if (kk_match('.')) {
+        if (kk_match('.')) kk_ret(KKTOK_ELLIPSIS);  //  ...
+        kklex_throw(KKERR_SYNTAX_ERROR__INVAILD_OR_UNEXPECTED_TOKEN);
+      }
+      if (kk_range_test('0', '9')) {
+        lex->u.fnum = kklex_get_decimal(c, lex);
+        if (kk_range_test('a', 'z') || kk_range_test('A', 'Z') || kk_test('_') || kk_test('$'))
+          kklex_throw(KKERR_SYNTAX_ERROR__INVAILD_OR_UNEXPECTED_TOKEN);
+        return lex->tok_type = KKTOK_FLOAT;
+      }
+      kk_ret(KKTOK_DOT);  //  .
+    case '-':
+      if (kk_match('=')) kk_ret(KKTOK_SUB_EQ);  //  -=
+      if (kk_match('-')) kk_ret(KKTOK_DEC);     //  --
+      kk_ret(KKTOK_SUB);                        //  -
+    case ',':
+      kk_ret(KKTOK_COM);  //  ,
+    case '+':
+      if (kk_match('=')) kk_ret(KKTOK_ADD_EQ);  //  +=
+      if (kk_match('+')) kk_ret(KKTOK_INC);     //  ++
+      kk_ret(KKTOK_ADD);                        //  +
+    case '*':
+      if (kk_match('=')) kk_ret(KKTOK_MUL_EQ);  //  *=
+      kk_ret(KKTOK_MUL);                        //  *
+    case ')':
+      kk_ret(KKTOK_PAREN_R);  //  )
+    case '(':
+      kk_ret(KKTOK_PAREN_L);  //  (
+    case '&':
+      if (kk_match('=')) kk_ret(KKTOK_BAND_EQ);    //  &=
+      if (kk_match('&')) kk_ret(KKTOK_LOGIC_AND);  //  &&
+      kk_ret(KKTOK_BIT_AND);                       //  &
+    case '%':
+      if (kk_match('=')) kk_ret(KKTOK_MOD_EQ);  //  %=
+      kk_ret(KKTOK_MOD);                        //  %
+    case '!':
+      if (kk_match('=')) {
+        if (kk_match('=')) kk_ret(KKTOK_NE_STRICT);  //  !==
+        kk_ret(KKTOK_NE);                            //  !=
+      }
+      kk_ret(KKTOK_LOGIC_NOT);  //  !
+    case '\'':
+      //!!! wait to write !!!
+    case '"':
+      //!!! wait to write !!!
+  }
 }
 
+#undef kk_ret
 #undef kk_range_push
 #undef kk_range_test
 #undef kk_range

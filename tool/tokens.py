@@ -55,6 +55,7 @@ tok_words = [
     "null",
 ]
 tok_symbols = [
+    ("assign",     "="),
     ("add",        "+"),
     ("sub",        "-"),
     ("div",        "/"),
@@ -135,8 +136,23 @@ for i in tok_words:
     s = ("  kktok_" + i + ",").upper()
     print(padding_end(s, 20)+("// %s" % i))
 
+
+def symbol_compare(a, b):
+    for i in range(min(len(a), len(b))):
+        if a[i] == b[i]:
+            continue
+        elif a[i] < b[i]:
+            return 1
+        else:
+            return -1
+    if len(a) < len(b):
+        return 1
+    else:
+        return -1
+
+
 print("")
-tok_symbols.sort()
+tok_symbols.sort(lambda x, y: symbol_compare(x[1], y[1]))
 for i in tok_symbols:
     s = ("  kktok_" + i[0] + ",").upper()
     print(padding_end(s, 20)+("// %s" % i[1]))
@@ -154,7 +170,8 @@ for w in tok_words:
 
 print("\n#define KKTOK_WORD_GROUPS(G)      \\")
 for w in first:
-    print(expand_item('G', ['KKTOK_WORD_GROUP_%s' % w.upper()], [30]))
+    print(expand_item('G', ['KKTOK_WORD_GROUP_%s' %
+                            w.upper(), "'%s'" % w[0]], [20, 10]))
 
 
 print("\n\n#endif")

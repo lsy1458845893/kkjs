@@ -53,55 +53,56 @@ enum {
   KKTOK_WHILE,      // while
   KKTOK_YIELD,      // yield
 
-  KKTOK_ADD,        // +
-  KKTOK_ADD_EQ,     // +=
-  KKTOK_ARROW,      // =>
-  KKTOK_BAND_EQ,    // &=
-  KKTOK_BIT_AND,    // &
   KKTOK_BIT_NOT,    // ~
-  KKTOK_BIT_OR,     // |
-  KKTOK_BIT_XOR,    // ^
-  KKTOK_BOR_EQ,     // |=
-  KKTOK_BRACE_L,    // {
   KKTOK_BRACE_R,    // }
-  KKTOK_BRACKET_L,  // [
-  KKTOK_BRACKET_R,  // ]
+  KKTOK_LOGIC_OR,   // ||
+  KKTOK_BOR_EQ,     // |=
+  KKTOK_BIT_OR,     // |
+  KKTOK_BRACE_L,    // {
   KKTOK_BXOR_EQ,    // ^=
-  KKTOK_COLON,      // :
-  KKTOK_COM,        // ,
-  KKTOK_DEC,        // --
-  KKTOK_DIV,        // /
-  KKTOK_DIV_EQ,     // /=
-  KKTOK_DOT,        // .
-  KKTOK_ELLIPSIS,   // ...
-  KKTOK_EQ,         // ==
-  KKTOK_EQ_STRICT,  // ===
+  KKTOK_BIT_XOR,    // ^
+  KKTOK_BRACKET_R,  // ]
+  KKTOK_BRACKET_L,  // [
+  KKTOK_QUESTION,   // ?
+  KKTOK_SHR_EQ,     // >>>=
+  KKTOK_SHR,        // >>>
+  KKTOK_SAR_EQ,     // >>=
+  KKTOK_SAR,        // >>
   KKTOK_GE,         // >=
   KKTOK_GT,         // >
-  KKTOK_INC,        // ++
+  KKTOK_ARROW,      // =>
+  KKTOK_EQ_STRICT,  // ===
+  KKTOK_EQ,         // ==
+  KKTOK_ASSIGN,     // =
   KKTOK_LE,         // <=
-  KKTOK_LOGIC_AND,  // &&
-  KKTOK_LOGIC_NOT,  // !
-  KKTOK_LOGIC_OR,   // ||
-  KKTOK_LT,         // <
-  KKTOK_MOD,        // %
-  KKTOK_MOD_EQ,     // %=
-  KKTOK_MUL,        // *
-  KKTOK_MUL_EQ,     // *=
-  KKTOK_NE,         // !=
-  KKTOK_NE_STRICT,  // !==
-  KKTOK_PAREN_L,    // (
-  KKTOK_PAREN_R,    // )
-  KKTOK_QUESTION,   // ?
-  KKTOK_SAR,        // >>
-  KKTOK_SAR_EQ,     // >>=
-  KKTOK_SEM,        // ;
-  KKTOK_SHL,        // <<
   KKTOK_SHL_EQ,     // <<=
-  KKTOK_SHR,        // >>>
-  KKTOK_SHR_EQ,     // >>>=
-  KKTOK_SUB,        // -
+  KKTOK_SHL,        // <<
+  KKTOK_LT,         // <
+  KKTOK_SEM,        // ;
+  KKTOK_COLON,      // :
+  KKTOK_DIV_EQ,     // /=
+  KKTOK_DIV,        // /
+  KKTOK_ELLIPSIS,   // ...
+  KKTOK_DOT,        // .
   KKTOK_SUB_EQ,     // -=
+  KKTOK_DEC,        // --
+  KKTOK_SUB,        // -
+  KKTOK_COM,        // ,
+  KKTOK_ADD_EQ,     // +=
+  KKTOK_INC,        // ++
+  KKTOK_ADD,        // +
+  KKTOK_MUL_EQ,     // *=
+  KKTOK_MUL,        // *
+  KKTOK_PAREN_R,    // )
+  KKTOK_PAREN_L,    // (
+  KKTOK_BAND_EQ,    // &=
+  KKTOK_LOGIC_AND,  // &&
+  KKTOK_BIT_AND,    // &
+  KKTOK_MOD_EQ,     // %=
+  KKTOK_MOD,        // %
+  KKTOK_NE_STRICT,  // !==
+  KKTOK_NE,         // !=
+  KKTOK_LOGIC_NOT,  // !
 };
 
 
@@ -183,23 +184,23 @@ enum {
   T(YIELD,         "yield")       \
 
 #define KKTOK_WORD_GROUPS(G)      \
-  G(KKTOK_WORD_GROUP_A)           \
-  G(KKTOK_WORD_GROUP_B)           \
-  G(KKTOK_WORD_GROUP_C)           \
-  G(KKTOK_WORD_GROUP_D)           \
-  G(KKTOK_WORD_GROUP_E)           \
-  G(KKTOK_WORD_GROUP_F)           \
-  G(KKTOK_WORD_GROUP_G)           \
-  G(KKTOK_WORD_GROUP_I)           \
-  G(KKTOK_WORD_GROUP_L)           \
-  G(KKTOK_WORD_GROUP_N)           \
-  G(KKTOK_WORD_GROUP_O)           \
-  G(KKTOK_WORD_GROUP_R)           \
-  G(KKTOK_WORD_GROUP_S)           \
-  G(KKTOK_WORD_GROUP_T)           \
-  G(KKTOK_WORD_GROUP_V)           \
-  G(KKTOK_WORD_GROUP_W)           \
-  G(KKTOK_WORD_GROUP_Y)           \
+  G(KKTOK_WORD_GROUP_A, 'a')      \
+  G(KKTOK_WORD_GROUP_B, 'b')      \
+  G(KKTOK_WORD_GROUP_C, 'c')      \
+  G(KKTOK_WORD_GROUP_D, 'd')      \
+  G(KKTOK_WORD_GROUP_E, 'e')      \
+  G(KKTOK_WORD_GROUP_F, 'f')      \
+  G(KKTOK_WORD_GROUP_G, 'g')      \
+  G(KKTOK_WORD_GROUP_I, 'i')      \
+  G(KKTOK_WORD_GROUP_L, 'l')      \
+  G(KKTOK_WORD_GROUP_N, 'n')      \
+  G(KKTOK_WORD_GROUP_O, 'o')      \
+  G(KKTOK_WORD_GROUP_R, 'r')      \
+  G(KKTOK_WORD_GROUP_S, 's')      \
+  G(KKTOK_WORD_GROUP_T, 't')      \
+  G(KKTOK_WORD_GROUP_V, 'v')      \
+  G(KKTOK_WORD_GROUP_W, 'w')      \
+  G(KKTOK_WORD_GROUP_Y, 'y')      \
 
 
 #endif
