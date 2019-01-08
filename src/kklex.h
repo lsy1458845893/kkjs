@@ -2,6 +2,7 @@
 #define KKLEX_H
 
 #include "kkdep.h"
+#include "kkstr.h"
 
 typedef kkuint16_t (*kklex_read_t)(void *udat);  // read unicode
 typedef void (*kklex_cleanup_t)(void *udat);
@@ -17,6 +18,11 @@ typedef struct kklex_s {
   kksize_t buf_top;
   kkuint16_t *buf;
   kksize_t line;
+  union {
+    kkuint64_t inum;
+    kkf64_t fnum;
+    kkstr_t *str;
+  }u;
 } kklex_t;
 
 #include "kkctx.h"
@@ -33,10 +39,7 @@ static inline void kklex_init(kklex_t *lex, void *udat, kklex_read_t read, kklex
   lex->buf = 0;
   lex->line = 1;
 }
-static inline void kklex_destory(kkctx_t *c, kklex_t *lex) {
-  if (lex->buf_size) kk_alloc(c, lex->buf, 0);
-  if (lex->cleanup) lex->cleanup(lex->udat);
-}
+void kklex_destory(kkctx_t *c, kklex_t *lex);
 
 uint8_t kklexi_next(kkctx_t *c,kklex_t *lex);
 

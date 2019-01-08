@@ -4,6 +4,7 @@
 enum {
     KKERR_OK,
     KKERR_NO_MEMORY,
+    KKERR_SYNTAX_ERROR__INVAILD_OR_UNEXPECTED_TOKEN,
 };
 
 #endif

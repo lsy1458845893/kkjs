@@ -22,5 +22,9 @@ typedef jmp_buf kkjbuf_t;
 #define kk_setjmp setjmp;
 #define kk_longjmp longjmp;
 
+#include <string.h>
+#define kk_strlen strlen
+#define kk_strcpy strcpy
+#define kk_memcpy memcpy
 
 #endif
