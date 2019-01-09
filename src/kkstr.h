@@ -25,6 +25,7 @@ typedef struct kkstr_s {
 
 kkstr_t *kkstr_from_D16(kkctx_t *c, kkuint16_t *src, kksize_t length);
 kkstr_t *kkstr_from_D8C(kkctx_t *c, kkuint8_t *src);
+kkstr_t *kkstr_from_D8(kkctx_t *c, kkuint8_t *src, kksize_t length);
 kkstr_t *kkstr_from_C8C(kkctx_t *c, kkuint8_t *src);
 
 void kkstr_refer(kkstr_t *s);

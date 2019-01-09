@@ -450,7 +450,9 @@ check:
     case '\'':
       //!!! wait to write !!!
     case '"':
-      //!!! wait to write !!!
+    //!!! wait to write !!!
+    default:
+      kklex_throw(KKERR_SYNTAX_ERROR__INVAILD_OR_UNEXPECTED_TOKEN);
   }
 }
 
