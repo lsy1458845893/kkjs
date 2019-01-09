@@ -10,7 +10,6 @@ enum {
   KKSTR_TYPE_C8,
   KKSTR_TYPE_D16,
   KKSTR_TYPE_C16,
-  KKSTR_TYPE_C16,
 };
 
 typedef struct kkstr_s {

@@ -2,6 +2,7 @@
 #define KKLEX_H
 
 #include "kkdep.h"
+#include "kkctx.h"
 #include "kkstr.h"
 
 typedef kkuint16_t (*kklex_read_t)(void *udat);  // read unicode
@@ -25,7 +26,6 @@ typedef struct kklex_s {
   }u;
 } kklex_t;
 
-#include "kkctx.h"
 
 static inline void kklex_init(kklex_t *lex, void *udat, kklex_read_t read, kklex_cleanup_t cleanup) {
   lex->udat = udat;

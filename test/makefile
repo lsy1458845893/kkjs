@@ -1,12 +1,12 @@
 
 
-SRC=$(wildcard ../src*.c)
+SRC=$(wildcard ../src/*.c)
 
-CFLAGS=-g
+CFLAGS=-g -I../src
 
 all:$(patsubst %.c,%.out,$(wildcard *.c))
 
-%.out:$(patsubst %.c,%.c.o,$(SRC))
+%.out:$(patsubst %.c,%.c.o,$(SRC)) %.c.o
 	gcc $(CFLAGS) -o $@ $^
 
 %.c.o:%.c

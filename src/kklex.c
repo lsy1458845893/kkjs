@@ -1,7 +1,7 @@
 #include "kklex.h"
 #include "kkerr.h"
 
-#define kklex_throw(code) kk_longjmp(*(c->jbuf), code)
+#define kklex_throw(code) kk_longjmp(*(c->jbuf), __LINE__)
 
 static void kklexi_buf_clean(kkctx_t *c, kklex_t *lex) {
   lex->buf_top = 0;
@@ -90,7 +90,7 @@ static kkuint16_t kklex_get(kkctx_t *c, kklex_t *lex) {
         return 0;
       } else if (kklex_is_line_terminator(ch))
         lex->line++;
-      lex->last_ch = lex->read(lex->udat);
+      lex->last_ch = ch;
       if (lex->last_ch == 0)  // end of file
         kklex_reader_clean(lex);
     } else {
@@ -112,19 +112,19 @@ static kkuint16_t kklex_read(kkctx_t *c, kklex_t *lex) {
     return kklex_get(c, lex);
 }
 
+static inline kkbool_t kklex_range(kkuint16_t ch, kkuint16_t a, kkuint16_t b) {
+  return (a <= ch && ch <= b) ? KK_TRUE : KK_FALSE;
+}
+
 static inline kkuint8_t kklex_hex_to_inum(kkuint16_t ch) {
-  if (kklex_is_number_char(ch))
+  if (kklex_range(ch, '0', '9'))
     return ch - '0';
-  else if ('a' <= ch && ch <= 'f')
+  else if (kklex_range(ch, 'a', 'f'))
     return ch - 'a' + 10;
-  else if ('A' <= ch && ch <= 'F')
+  else if (kklex_range(ch, 'A', 'F'))
     return ch - 'A' + 10;
   else
     return 16;
-}
-
-static inline kkbool_t kklex_range(kkuint16_t ch, kkuint16_t a, kkuint16_t b) {
-  return (a <= ch && ch <= b) ? KK_TRUE : KK_FALSE;
 }
 
 static inline kkbool_t kklex_match(kkctx_t *c, kklex_t *lex, kkuint16_t ch) {
@@ -203,6 +203,7 @@ static inline void kklex_clean_lasttype(kkctx_t *c, kklex_t *lex) {
       kkstr_unrefer(c, lex->u.str);
       break;
     case KKTOK_REGEXP:  //!!! regexp module need !!!
+      break;
   }
   lex->line_terminator = 0;
   lex->tok_type = 0;
@@ -241,17 +242,51 @@ static kkf64_t kklexi_get_exponent(kkctx_t *c, kklex_t *lex) {
 }
 
 static kkf64_t kklex_get_decimal(kkctx_t *c, kklex_t *lex) {
-  kkf64_t f = 0;
-  while (kk_range_test('0', '9'))
-    f = f * 0.1 + (kk_get() - '0');
+  kkf64_t f = 0, t = 0.1;
+  while (kk_range_test('0', '9')) {
+    f += (kk_get() - '0') * t;
+    t *= 0.1;
+  }
   return f;
+}
+
+static kkuint16_t kklexi_parse_string_ch(kkctx_t *c, kklex_t *lex) {
+  if (kk_match('\\')) {
+    if (kk_match('x')) {
+      kkuint16_t ihex = 0;
+      for (kkuint8_t i = 0; i < 2; i++) {
+        if (kk_range_test('0', '9') || kk_range_test('a', 'f') || kk_range_test('A', 'F'))
+          ihex = ihex * 16 + kklex_hex_to_inum(kk_get());
+        else
+          kklex_throw(KKERR_SYNTAX_ERROR__INVAILD_OR_UNEXPECTED_TOKEN);
+      }
+      if (kk_range_test('a', 'z') || kk_range_test('A', 'Z') || kk_test('_') || kk_test('$'))
+        kklex_throw(KKERR_SYNTAX_ERROR__INVAILD_OR_UNEXPECTED_TOKEN);
+      return ihex;
+    } else if (kk_match('u')) {
+      kkuint16_t ihex = 0;
+      for (kkuint8_t i = 0; i < 4; i++) {
+        if (kk_range_test('0', '9') || kk_range_test('a', 'f') || kk_range_test('A', 'F'))
+          ihex = ihex * 16 + kklex_hex_to_inum(kk_get());
+        else
+          kklex_throw(KKERR_SYNTAX_ERROR__INVAILD_OR_UNEXPECTED_TOKEN);
+      }
+      if (kk_range_test('a', 'z') || kk_range_test('A', 'Z') || kk_test('_') || kk_test('$'))
+        kklex_throw(KKERR_SYNTAX_ERROR__INVAILD_OR_UNEXPECTED_TOKEN);
+      return ihex;
+    }
+  }
+  return kk_get();
 }
 
 uint8_t kklexi_next(kkctx_t *c, kklex_t *lex) {
   if (!c->jbuf) return 0;
   kklex_clean_lasttype(c, lex);
+  if (lex->buf_top) kklex_throw(KKERR_SYNTAX_ERROR__INVAILD_OR_UNEXPECTED_TOKEN);
 check:
-  if (kklex_is_line_terminator(kk_read())) {
+  if (kk_match(0)) {
+    kk_ret(KKTOK_EOF);
+  } else if (kklex_is_line_terminator(kk_read())) {
     lex->line++;
     lex->line_terminator = 1;
     kk_get();
@@ -266,8 +301,15 @@ check:
            kk_range_test('0', '9') ||
            kk_test('_') || kk_test('$'))
       kklexi_push(c, lex, kk_get());
-    if (lex->tok_type = kklex_match_keyword(lex)) return lex->tok_type;
+    if (lex->tok_type = kklex_match_keyword(lex)) {
+      lex->buf_top = 0;
+      return lex->tok_type;
+    }
     //!!! return id str !!!
+    lex->u.str = kkstr_from_D16(c, lex->buf, lex->buf_top);
+    lex->buf_top = 0;
+    if (!lex->u.str) kklex_throw(KKERR_NO_MEMORY);
+    return lex->tok_type = KKTOK_ID;
   } else if (kk_range_test('0', '9')) {
     if (kk_match('0')) {
       if (kk_match('x') || kk_match('X')) {
@@ -339,6 +381,29 @@ check:
         kklex_throw(KKERR_SYNTAX_ERROR__INVAILD_OR_UNEXPECTED_TOKEN);
       return lex->tok_type;
     } else {
+      kkuint64_t inum = 0;
+      kkbool_t isfloat = 0;
+      while (kk_range_test('0', '9'))
+        inum = inum * 10 + (kk_get() - '0');
+      kkf64_t fnum = 0, e = 1;
+      if (kk_match('.')) {
+        isfloat = 1;
+        fnum = kklex_get_decimal(c, lex);
+      }
+      if (kk_match('e') || kk_match('E')) {
+        isfloat = 1;
+        e = kklexi_get_exponent(c, lex);
+      }
+      if (isfloat) {
+        lex->u.fnum = (inum + fnum) * e;
+        lex->tok_type = KKTOK_FLOAT;
+      } else {
+        lex->u.inum = inum;
+        lex->tok_type = KKTOK_INT;
+      }
+      if (kk_range_test('a', 'z') || kk_range_test('A', 'Z') || kk_test('_') || kk_test('$'))
+        kklex_throw(KKERR_SYNTAX_ERROR__INVAILD_OR_UNEXPECTED_TOKEN);
+      return lex->tok_type;
     }
   }
   switch (kk_get()) {
@@ -447,10 +512,22 @@ check:
         kk_ret(KKTOK_NE);                            //  !=
       }
       kk_ret(KKTOK_LOGIC_NOT);  //  !
-    case '\'':
-      //!!! wait to write !!!
     case '"':
-    //!!! wait to write !!!
+      while (!kk_test('"')) {
+        if (kk_test(0)) kklex_throw(KKERR_SYNTAX_ERROR__INVAILD_OR_UNEXPECTED_TOKEN);
+        kklexi_push(c, lex, kklexi_parse_string_ch(c, lex));
+      }
+      lex->u.str = kkstr_from_D16(c, lex->buf, lex->buf_top);
+      if (!lex->u.str) kklex_throw(KKERR_NO_MEMORY);
+      return lex->tok_type = KKTOK_STRING;
+    case '\'':
+      while (!kk_test('\'')) {
+        if (kk_test(0)) kklex_throw(KKERR_SYNTAX_ERROR__INVAILD_OR_UNEXPECTED_TOKEN);
+        kklexi_push(c, lex, kklexi_parse_string_ch(c, lex));
+      }
+      lex->u.str = kkstr_from_D16(c, lex->buf, lex->buf_top);
+      if (!lex->u.str) kklex_throw(KKERR_NO_MEMORY);
+      return lex->tok_type = KKTOK_STRING;
     default:
       kklex_throw(KKERR_SYNTAX_ERROR__INVAILD_OR_UNEXPECTED_TOKEN);
   }
