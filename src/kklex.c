@@ -287,7 +287,6 @@ check:
   if (kk_match(0)) {
     kk_ret(KKTOK_EOF);
   } else if (kklex_is_line_terminator(kk_read())) {
-    lex->line++;
     lex->line_terminator = 1;
     kk_get();
     goto check;
@@ -466,7 +465,7 @@ check:
         while (1) {
           if (kk_match(0)) kklex_throw(KKERR_SYNTAX_ERROR__INVAILD_OR_UNEXPECTED_TOKEN);
           if (kk_match('*') && kk_match('/')) goto check;
-          kk_get();
+          if (kklex_is_line_terminator(kk_get())) lex->line_terminator = 1;
         }
       }
       kk_ret(KKTOK_DIV);  //  /
@@ -513,20 +512,22 @@ check:
       }
       kk_ret(KKTOK_LOGIC_NOT);  //  !
     case '"':
-      while (!kk_test('"')) {
+      while (!kk_match('"')) {
         if (kk_test(0)) kklex_throw(KKERR_SYNTAX_ERROR__INVAILD_OR_UNEXPECTED_TOKEN);
         kklexi_push(c, lex, kklexi_parse_string_ch(c, lex));
       }
       lex->u.str = kkstr_from_D16(c, lex->buf, lex->buf_top);
       if (!lex->u.str) kklex_throw(KKERR_NO_MEMORY);
+      lex->buf_top = 0;
       return lex->tok_type = KKTOK_STRING;
     case '\'':
-      while (!kk_test('\'')) {
+      while (!kk_match('\'')) {
         if (kk_test(0)) kklex_throw(KKERR_SYNTAX_ERROR__INVAILD_OR_UNEXPECTED_TOKEN);
         kklexi_push(c, lex, kklexi_parse_string_ch(c, lex));
       }
       lex->u.str = kkstr_from_D16(c, lex->buf, lex->buf_top);
       if (!lex->u.str) kklex_throw(KKERR_NO_MEMORY);
+      lex->buf_top = 0;
       return lex->tok_type = KKTOK_STRING;
     default:
       kklex_throw(KKERR_SYNTAX_ERROR__INVAILD_OR_UNEXPECTED_TOKEN);
